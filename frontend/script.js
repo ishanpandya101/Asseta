@@ -1,4 +1,5 @@
 // ===== script.js =====
+const API_BASE = "https://asseta.onrender.com";
 
 // Basic helper toast
 function showToast({ title = "Info", message = "", type = "info", timeout = 3000 }) {
