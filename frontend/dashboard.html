@@ -363,295 +363,203 @@
 </div>
 
 <script>
-    // DUMMY DATA FOR DASHBOARD FILL (EXPANDED)
-    let assets = JSON.parse(localStorage.getItem('assets')) || [
-        { name: "MacBook Pro M3", category: "Laptop", user: "Ishan", status: "Active", cost: 2499 },
-        { name: "Dell UltraSharp 32", category: "Monitor", user: "Sarah", status: "Active", cost: 899 },
-        { name: "Herman Miller Aeron", category: "Furniture", user: "John", status: "Repair", cost: 1400 },
-        { name: "iPhone 15 Pro", category: "Mobile", user: "Ishan", status: "Active", cost: 1099 },
-        { name: "iPad Pro 12.9", category: "Tablet", user: "Manager", status: "Active", cost: 1199 },
-        { name: "Logitech MX Master 3", category: "Accessories", user: "Paru", status: "Active", cost: 99 },
-        { name: "ErgoChair Pro", category: "Furniture", user: "Alice", status: "Active", cost: 499 },
-        { name: "Lenovo ThinkPad X1", category: "Laptop", user: "David", status: "Repair", cost: 1399 },
-        { name: "Samsung Odyssey G9", category: "Monitor", user: "Ishan", status: "Active", cost: 1299 },
-        { name: "Standing Desk Explorer", category: "Furniture", user: "Sarah", status: "Active", cost: 650 },
-        { name: "Sony A7IV Camera", category: "Electronics", user: "Marketing Team", status: "Active", cost: 2499 },
-        { name: "Cisco Catalyst Switch", category: "Electronics", user: "IT Dept", status: "Active", cost: 850 },
-        { name: "AirPods Pro 2", category: "Accessories", user: "John", status: "Active", cost: 249 }
-    ];
-    let products = JSON.parse(localStorage.getItem('products')) || [
-        { name: "Wireless Mouse", sku: "LOG-001", stock: 45, price: 25 },
-        { name: "Mechanical Keyboard", sku: "KEY-882", stock: 8, price: 120 },
-        { name: "USB-C Hub", sku: "HUB-109", stock: 112, price: 45 },
-        { name: "Webcam 4K", sku: "CAM-04", stock: 15, price: 199 },
-        { name: "Noise Cancelling Headphones", sku: "AUD-102", stock: 25, price: 299 },
-        { name: "Standing Desk Converter", sku: "FUR-004", stock: 5, price: 150 },
-        { name: "27-inch 4K Monitor", sku: "MON-274K", stock: 12, price: 350 },
-        { name: "Ergonomic Office Chair", sku: "FUR-099", stock: 2, price: 250 },
-        { name: "Portable SSD 1TB", sku: "STO-1TB", stock: 50, price: 89 },
-        { name: "Wireless Charging Pad", sku: "ACC-011", stock: 200, price: 25 }
-    ];
-    let vendors = JSON.parse(localStorage.getItem('vendors')) || [
-        { name: "TechSolutions Inc", person: "John Doe", email: "john@tech.com", phone: "+1 234 567 890" },
-        { name: "Apple Enterprise", person: "Alice Smith", email: "corp@apple.com", phone: "+1 999 888 777" },
-        { name: "Office Depot", person: "Mike Ross", email: "mike@office.com", phone: "+1 555 444 333" },
-        { name: "NARMAHI Tech Solutions", person: "Ishan Pandya", email: "contact@narmahi.com", phone: "+91 98765 43210" },
-        { name: "Dell Technologies", person: "Michael Dell", email: "sales@dell.com", phone: "+1 800 123 456" },
-        { name: "Logitech B2B", person: "Sarah Jenkins", email: "b2b@logitech.com", phone: "+1 888 777 666" },
-        { name: "Amazon Business", person: "Account Manager", email: "support@amazon.com", phone: "+1 888 280 4331" }
-    ];
 
-    let charts = {};
+const API_BASE = "https://asseta.onrender.com";
 
-    window.onload = () => { 
-        applyTheme(); 
-        initCharts(); 
-        refreshAll(); 
-    };
+let assets = [];
+let products = [];
+let vendors = [];
+let charts = {};
 
-    function refreshAll() {
-        renderAssets();
-        renderProducts();
-        renderVendors();
-        updateStats();
-        updateCharts();
-        saveData();
-    }
+window.onload = async () => {
+  applyTheme();
+  await fetchAllData();
+  initCharts();
+  refreshAll();
+};
 
-    function saveData() {
-        localStorage.setItem('assets', JSON.stringify(assets));
-        localStorage.setItem('products', JSON.stringify(products));
-        localStorage.setItem('vendors', JSON.stringify(vendors));
-    }
+async function fetchAllData() {
+  try {
+    const [aRes, pRes, vRes] = await Promise.all([
+      fetch(`${API_BASE}/api/assets`),
+      fetch(`${API_BASE}/api/products`),
+      fetch(`${API_BASE}/api/vendors`)
+    ]);
 
-    function updateStats() {
-        document.getElementById('statTotal').innerText = assets.length;
-        document.getElementById('statProducts').innerText = products.length;
-        document.getElementById('statVendors').innerText = vendors.length;
-    }
+    assets = await aRes.json();
+    products = await pRes.json();
+    vendors = await vRes.json();
 
-    function renderAssets() {
-        const tbody = document.getElementById('assetTableBody');
-        tbody.innerHTML = assets.map((a, i) => `
-            <tr>
-                <td><b>${a.name}</b></td>
-                <td>${a.category}</td>
-                <td>${a.user}</td>
-                <td><span class="badge ${a.status==='Active'?'badge-success':'badge-warning'}">${a.status}</span></td>
-                <td>$${a.cost}</td>
-                <td style="text-align:right;">
-                    <button class="btn btn-outline" style="padding:6px 10px;" onclick="editAsset(${i})"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-outline" style="padding:6px 10px; color:var(--danger);" onclick="delAsset(${i})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('');
-        document.getElementById('assetEmpty').style.display = assets.length ? 'none' : 'block';
-    }
+  } catch (err) {
+    console.error("Data load error:", err);
+    showToast("Server connection error");
+  }
+}
 
-    function renderProducts() {
-        const tbody = document.getElementById('productTableBody');
-        tbody.innerHTML = products.map((p, i) => `
-            <tr>
-                <td><b>${p.name}</b></td>
-                <td>${p.sku}</td>
-                <td>${p.stock}</td>
-                <td>$${p.price}</td>
-                <td><span class="badge ${p.stock > 10 ? 'badge-success' : 'badge-danger'}">${p.stock > 10 ? 'In Stock' : 'Low Stock'}</span></td>
-                <td style="text-align:right;">
-                    <button class="btn btn-outline" style="padding:6px 10px;" onclick="editProduct(${i})"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-outline" style="padding:6px 10px; color:var(--danger);" onclick="delProduct(${i})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('');
-        document.getElementById('productEmpty').style.display = products.length ? 'none' : 'block';
-    }
+function refreshAll() {
+  renderAssets();
+  renderProducts();
+  renderVendors();
+  updateStats();
+  updateCharts();
+}
 
-    function renderVendors() {
-        const grid = document.getElementById('vendorGrid');
-        grid.innerHTML = vendors.map((v, i) => `
-            <div class="vendor-card">
-                <div class="vendor-actions">
-                    <button class="btn btn-outline" style="padding:5px;" onclick="editVendor(${i})"><i class="fas fa-pen"></i></button>
-                    <button class="btn btn-outline" style="padding:5px; color:var(--danger);" onclick="delVendor(${i})"><i class="fas fa-trash"></i></button>
-                </div>
-                <div style="width:40px; height:40px; background:var(--bg-body); border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:15px; color:var(--primary);">
-                    <i class="fas fa-building"></i>
-                </div>
-                <h4 style="margin-bottom:5px;">${v.name}</h4>
-                <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;"><i class="fas fa-user"></i> ${v.person}</p>
-                <div style="font-size:13px; color:var(--text-main);">
-                    <div style="margin-bottom:5px;"><i class="fas fa-envelope" style="width:20px; color:var(--text-muted);"></i> ${v.email}</div>
-                    <div><i class="fas fa-phone" style="width:20px; color:var(--text-muted);"></i> ${v.phone}</div>
-                </div>
-            </div>
-        `).join('');
-        document.getElementById('vendorEmpty').style.display = vendors.length ? 'none' : 'block';
-    }
+function updateStats() {
+  document.getElementById('statTotal').innerText = assets.length;
+  document.getElementById('statProducts').innerText = products.length;
+  document.getElementById('statVendors').innerText = vendors.length;
+}
 
-    // CRUD FUNCTIONS
-    function openAssetModal() { document.getElementById('assetModal').classList.add('active'); document.getElementById('assetIndex').value = ''; }
-    function editAsset(i) { 
-        document.getElementById('assetIndex').value = i; 
-        document.getElementById('aName').value = assets[i].name; 
-        document.getElementById('aCat').value = assets[i].category; 
-        document.getElementById('aStatus').value = assets[i].status; 
-        document.getElementById('aUser').value = assets[i].user; 
-        document.getElementById('aCost').value = assets[i].cost; 
-        document.getElementById('assetModal').classList.add('active'); 
-    }
-    function saveAsset() {
-        const item = { name: document.getElementById('aName').value, category: document.getElementById('aCat').value, status: document.getElementById('aStatus').value, user: document.getElementById('aUser').value, cost: document.getElementById('aCost').value };
-        if(!item.name) return alert('Name required');
-        const idx = document.getElementById('assetIndex').value;
-        idx === '' ? assets.push(item) : assets[idx] = item;
-        closeModals(); refreshAll(); showToast('Asset Saved');
-    }
-    function delAsset(i) { if(confirm('Delete?')) { assets.splice(i,1); refreshAll(); } }
+function renderAssets() {
+  const tbody = document.getElementById('assetTableBody');
 
-    function openProductModal() { document.getElementById('productModal').classList.add('active'); document.getElementById('prodIndex').value = ''; }
-    function editProduct(i) {
-        document.getElementById('prodIndex').value = i;
-        document.getElementById('pName').value = products[i].name;
-        document.getElementById('pSku').value = products[i].sku;
-        document.getElementById('pStock').value = products[i].stock;
-        document.getElementById('pPrice').value = products[i].price;
-        document.getElementById('productModal').classList.add('active');
-    }
-    function saveProduct() {
-        const item = { name: document.getElementById('pName').value, sku: document.getElementById('pSku').value, stock: document.getElementById('pStock').value, price: document.getElementById('pPrice').value };
-        if(!item.name) return alert('Name required');
-        const idx = document.getElementById('prodIndex').value;
-        idx === '' ? products.push(item) : products[idx] = item;
-        closeModals(); refreshAll(); showToast('Product Saved');
-    }
-    function delProduct(i) { if(confirm('Delete?')) { products.splice(i,1); refreshAll(); } }
+  tbody.innerHTML = assets.map(a => `
+    <tr>
+      <td><b>${a.name}</b></td>
+      <td>${a.type || '-'}</td>
+      <td>${a.assignedTo || '-'}</td>
+      <td><span class="badge ${a.status==='Active'?'badge-success':'badge-warning'}">${a.status || 'Active'}</span></td>
+      <td>$${a.purchaseDate ? '—' : ''}</td>
+      <td style="text-align:right;">
+        <button class="btn btn-outline" onclick="editAsset('${a._id}')"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-outline" style="color:var(--danger);" onclick="deleteAsset('${a._id}')"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
 
-    function openVendorModal() { document.getElementById('vendorModal').classList.add('active'); document.getElementById('vendIndex').value = ''; }
-    function editVendor(i) {
-        document.getElementById('vendIndex').value = i;
-        document.getElementById('vName').value = vendors[i].name;
-        document.getElementById('vPerson').value = vendors[i].person;
-        document.getElementById('vEmail').value = vendors[i].email;
-        document.getElementById('vPhone').value = vendors[i].phone;
-        document.getElementById('vendorModal').classList.add('active');
-    }
-    function saveVendor() {
-        const item = { name: document.getElementById('vName').value, person: document.getElementById('vPerson').value, email: document.getElementById('vEmail').value, phone: document.getElementById('vPhone').value };
-        if(!item.name) return alert('Name required');
-        const idx = document.getElementById('vendIndex').value;
-        idx === '' ? vendors.push(item) : vendors[idx] = item;
-        closeModals(); refreshAll(); showToast('Vendor Saved');
-    }
-    function delVendor(i) { if(confirm('Delete?')) { vendors.splice(i,1); refreshAll(); } }
+function renderProducts() {
+  const tbody = document.getElementById('productTableBody');
 
-    function closeModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); }
+  tbody.innerHTML = products.map(p => `
+    <tr>
+      <td><b>${p.name}</b></td>
+      <td>${p.category || '-'}</td>
+      <td>${p.quantity || 0}</td>
+      <td>$${p.price || 0}</td>
+      <td><span class="badge ${p.quantity > 10 ? 'badge-success' : 'badge-danger'}">${p.quantity > 10 ? 'In Stock' : 'Low Stock'}</span></td>
+      <td style="text-align:right;">
+        <button class="btn btn-outline" onclick="editProduct('${p._id}')"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-outline" style="color:var(--danger);" onclick="deleteProduct('${p._id}')"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
 
-    // UTILS
-    function switchTab(id, el) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        el.classList.add('active');
-        document.getElementById('pageTitle').innerText = id.charAt(0).toUpperCase() + id.slice(1) + ' Overview';
-        if(window.innerWidth <= 1024) toggleSidebar();
-    }
-    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
-    function showToast(msg) {
-        const t = document.createElement('div'); t.className = 'toast';
-        t.innerHTML = `<i class="fas fa-check-circle" style="color:var(--success)"></i> ${msg}`;
-        document.getElementById('toastContainer').appendChild(t);
-        setTimeout(() => t.remove(), 3000);
-    }
-    function toggleTheme() {
-        document.body.classList.toggle('dark-theme');
-        localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
-        applyTheme();
-    }
-    function applyTheme() {
-        const isDark = localStorage.getItem('theme') === 'dark';
-        if(isDark) document.body.classList.add('dark-theme');
-        document.getElementById('themeBtn').innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-    }
-    function resetData() { if(confirm('Reset all data?')) { localStorage.clear(); location.reload(); } }
-    function logout() { showToast('Logging out...'); setTimeout(() => location.reload(), 1000); }
-    
-    function handleGlobalSearch() {
-        const q = document.getElementById('mainSearch').value.toLowerCase();
-        const assetsFiltered = assets.filter(a => a.name.toLowerCase().includes(q));
-        const tbody = document.getElementById('assetTableBody');
-        tbody.innerHTML = assetsFiltered.map((a, i) => `
-            <tr>
-                <td><b>${a.name}</b></td>
-                <td>${a.category}</td>
-                <td>${a.user}</td>
-                <td><span class="badge ${a.status==='Active'?'badge-success':'badge-warning'}">${a.status}</span></td>
-                <td>$${a.cost}</td>
-                <td style="text-align:right;"><button class="btn btn-outline" style="padding:6px 10px;" onclick="editAsset(${i})"><i class="fas fa-edit"></i></button></td>
-            </tr>
-        `).join('');
-    }
+function renderVendors() {
+  const grid = document.getElementById('vendorGrid');
 
-    // CHARTS INITIALIZATION WITH FAKE DATA
-    function initCharts() {
-        // Line Chart: Asset Value Growth
-        charts.growth = new Chart(document.getElementById('growthChart'), {
-            type: 'line',
-            data: {
-                labels: ['Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
-                datasets: [{ 
-                    label: 'Asset Value ($)', 
-                    data: [12000, 15500, 14200, 19000, 24000, 28500], // FAKE DATA
-                    borderColor: '#6366f1', 
-                    tension: 0.4, 
-                    fill: true, 
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)' 
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                    x: { grid: { display: false } } 
-                } 
-            }
-        });
+  grid.innerHTML = vendors.map(v => `
+    <div class="vendor-card">
+      <div class="vendor-actions">
+        <button class="btn btn-outline" onclick="editVendor('${v._id}')"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-outline" style="color:var(--danger);" onclick="deleteVendor('${v._id}')"><i class="fas fa-trash"></i></button>
+      </div>
+      <h4>${v.name}</h4>
+      <p>${v.email || '-'}</p>
+      <p>${v.phone || '-'}</p>
+    </div>
+  `).join('');
+}
 
-        // Doughnut Chart: Asset Status
-        charts.status = new Chart(document.getElementById('statusChart'), {
-            type: 'doughnut',
-            data: { 
-                labels: ['Active', 'Repair', 'Retired', 'Missing'], 
-                datasets: [{ 
-                    data: [65, 15, 12, 8], // FAKE DATA
-                    backgroundColor: ['#10b981', '#f59e0b', '#64748b', '#ef4444'], 
-                    borderWidth: 0 
-                }] 
-            },
-            options: { 
-                responsive: true, 
-                cutout: '75%', 
-                plugins: { 
-                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } 
-                } 
-            }
-        });
-    }
+/* ================= CRUD ================= */
 
-    function updateCharts() {
-        if(!charts.status) return;
-        // Updating Doughnut Chart based on real array length
-        const activeCount = assets.filter(a=>a.status==='Active').length;
-        const repairCount = assets.filter(a=>a.status==='Repair').length;
-        
-        // If arrays are empty, use dummy distribution, otherwise use real data
-        if(activeCount > 0 || repairCount > 0) {
-            charts.status.data.datasets[0].data = [activeCount, repairCount, 2, 1];
-            charts.status.update();
-        }
-    }
+async function saveAsset() {
+  const payload = {
+    name: document.getElementById('aName').value,
+    type: document.getElementById('aCat').value,
+    status: document.getElementById('aStatus').value,
+    assignedTo: document.getElementById('aUser').value
+  };
+
+  await fetch(`${API_BASE}/api/assets`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
+
+  closeModals();
+  await fetchAllData();
+  refreshAll();
+}
+
+async function deleteAsset(id) {
+  await fetch(`${API_BASE}/api/assets/${id}`, { method: "DELETE" });
+  await fetchAllData();
+  refreshAll();
+}
+
+async function saveProduct() {
+  const payload = {
+    name: document.getElementById('pName').value,
+    category: document.getElementById('pSku').value,
+    quantity: document.getElementById('pStock').value,
+    price: document.getElementById('pPrice').value
+  };
+
+  await fetch(`${API_BASE}/api/products`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
+
+  closeModals();
+  await fetchAllData();
+  refreshAll();
+}
+
+async function deleteProduct(id) {
+  await fetch(`${API_BASE}/api/products/${id}`, { method:"DELETE" });
+  await fetchAllData();
+  refreshAll();
+}
+
+async function saveVendor() {
+  const payload = {
+    name: document.getElementById('vName').value,
+    email: document.getElementById('vEmail').value,
+    phone: document.getElementById('vPhone').value
+  };
+
+  await fetch(`${API_BASE}/api/vendors`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
+
+  closeModals();
+  await fetchAllData();
+  refreshAll();
+}
+
+async function deleteVendor(id) {
+  await fetch(`${API_BASE}/api/vendors/${id}`, { method:"DELETE" });
+  await fetchAllData();
+  refreshAll();
+}
+
+/* ================= UTIL ================= */
+
+function closeModals() {
+  document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<i class="fas fa-check-circle" style="color:var(--success)"></i> ${msg}`;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+function toggleTheme() {
+  document.body.classList.toggle('dark-theme');
+}
+
+function applyTheme() {}
+
 </script>
+
 
 </body>
 </html>
