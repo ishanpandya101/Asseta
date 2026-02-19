@@ -7,7 +7,8 @@ const bcrypt = require("bcryptjs");
 
 const app = express();
 
-// Middlewares
+/* ================= MIDDLEWARE ================= */
+
 app.use(express.json());
 app.use(cors());
 app.use(express.static("public"));
@@ -21,6 +22,7 @@ mongoose
 
 /* ================= MODELS ================= */
 
+// Vendor
 const Vendor = mongoose.model(
   "Vendor",
   new mongoose.Schema({
@@ -32,6 +34,7 @@ const Vendor = mongoose.model(
   })
 );
 
+// Product
 const Product = mongoose.model(
   "Product",
   new mongoose.Schema({
@@ -43,6 +46,7 @@ const Product = mongoose.model(
   })
 );
 
+// Asset
 const Asset = mongoose.model(
   "Asset",
   new mongoose.Schema({
@@ -54,16 +58,35 @@ const Asset = mongoose.model(
   })
 );
 
+// User (Email + Username)
 const User = mongoose.model(
   "User",
   new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    role: { type: String, default: "user" },
-    email: String,
-    password: { type: String, required: true },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    role: {
+      type: String,
+      default: "user",
+    },
+
+    password: {
+      type: String,
+      required: true,
+    },
   })
 );
 
+// Notification
 const Notification = mongoose.model(
   "Notification",
   new mongoose.Schema({
@@ -75,6 +98,7 @@ const Notification = mongoose.model(
   })
 );
 
+// Support
 const Support = mongoose.model(
   "Support",
   new mongoose.Schema({
@@ -87,6 +111,7 @@ const Support = mongoose.model(
   })
 );
 
+// Recycle Bin
 const RecycleBin = mongoose.model(
   "RecycleBin",
   new mongoose.Schema({
@@ -102,11 +127,11 @@ async function createNotification(title, message, type = "info") {
   try {
     await Notification.create({ title, message, type });
   } catch (err) {
-    console.error("Notification error:", err);
+    console.error("Notification Error:", err);
   }
 }
 
-/* ================= CRUD ================= */
+/* ================= CRUD ROUTES ================= */
 
 function crudRoutes(model, name) {
   const base = `/api/${name}`;
@@ -132,9 +157,11 @@ function crudRoutes(model, name) {
 
   // PUT
   app.put(`${base}/:id`, async (req, res) => {
-    const updated = await model.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const updated = await model.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
 
     res.json(updated);
   });
@@ -156,43 +183,94 @@ function crudRoutes(model, name) {
   });
 }
 
-/* ================= ROUTES ================= */
+/* ================= API ROUTES ================= */
 
 crudRoutes(Vendor, "vendors");
 crudRoutes(Product, "products");
 crudRoutes(Asset, "assets");
 crudRoutes(User, "users");
 
-/* ============ AUTH ============ */
+/* ================= AUTH ================= */
 
+// REGISTER
 app.post("/api/auth/register", async (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, email, password } = req.body;
 
-  const hash = await bcrypt.hash(password, 10);
+    // Check duplicate
+    const exist = await User.findOne({
+      $or: [{ username }, { email }],
+    });
 
-  await User.create({
-    username,
-    password: hash,
-  });
+    if (exist) {
+      return res.status(400).json({
+        message: "Username or Email already exists",
+      });
+    }
 
-  res.json({ message: "Registered Successfully" });
+    // Hash password
+    const hash = await bcrypt.hash(password, 10);
+
+    await User.create({
+      username,
+      email,
+      password: hash,
+    });
+
+    res.json({ message: "Registered Successfully" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Register Failed" });
+  }
 });
 
+
+// LOGIN (Email + Username Support)
 app.post("/api/auth/login", async (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  const user = await User.findOne({ username });
+    // Find by username OR email
+    const user = await User.findOne({
+      $or: [
+        { username: username },
+        { email: username },
+      ],
+    });
 
-  if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user) {
+      return res.status(400).json({
+        message: "User not found",
+      });
+    }
 
-  const ok = await bcrypt.compare(password, user.password);
+    const ok = await bcrypt.compare(password, user.password);
 
-  if (!ok) return res.status(400).json({ message: "Wrong password" });
+    if (!ok) {
+      return res.status(400).json({
+        message: "Wrong password",
+      });
+    }
 
-  res.json({ message: "Login Success" });
+    res.json({
+      message: "Login Success",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Login Failed" });
+  }
 });
 
-/* ============ TEST ROUTE ============ */
+
+/* ================= TEST ================= */
 
 app.get("/", (req, res) => {
   res.send("Asseta Backend Running 🚀");
